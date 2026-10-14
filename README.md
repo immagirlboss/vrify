@@ -18,7 +18,7 @@ Open http://localhost:3000. Without credentials, AI uses a labeled deterministic
 
 ## Live integrations
 
-Set `AI_GATEWAY_API_KEY` server-side. `AI_MODEL` defaults to `openai/gpt-4.1`, currently listed by Gateway with image inputs. Uses AI SDK `generateObject`, Gateway provider, and Zod validation. Photos are product data; the model never generates replacement art. No audio transcription endpoint is configured: unsupported speech recognition falls back to typing.
+Set `AI_GATEWAY_API_KEY` server-side. `AI_MODEL` defaults to `openai/gpt-4.1`, currently listed by Gateway with image inputs. Uses AI SDK `generateObject`, Gateway provider, and Zod validation. Photos are product data; the model never generates replacement art. Hands-free mode uses browser speech recognition when supported, or AI Gateway transcription with `AI_TRANSCRIPTION_MODEL` (default `openai/whisper-1`). Unsupported devices without a Gateway key retain typed and gaze controls.
 
 Configure one Shopify test store:
 
@@ -36,9 +36,9 @@ Import this repository into Vercel; choose Next.js, keep standard `npm run build
 
 ## Devices and persistence
 
-Camera capture uses `getUserMedia` on HTTPS or localhost; permission or hardware failures give an upload fallback. Camera selection appears when multiple cameras are detected. Browser SpeechRecognition is checked at runtime, uses short user-started sessions, and can invoke capture, edit, and save commands. Optional speechSynthesis reads short responses. Recognition may depend on the browser's speech service. This is not fully hands-free: each listening session starts with a tap. Camera permissions, real camera capture, speech input/output, and Quest behavior need hardware testing.
+Camera capture uses `getUserMedia` on HTTPS or localhost; permission or hardware failures give an upload fallback. Camera selection appears when multiple cameras are detected. Browser SpeechRecognition is checked at runtime, uses short user-started sessions, and can invoke capture, edit, and save commands. Optional speechSynthesis reads short responses. Recognition may depend on the browser's speech service. Hands-free mode needs an initial microphone activation/permission gesture, then listens for “vrify” followed by a command and automatically resumes between commands. Say “vrify stop listening” to stop. Camera permissions, real camera capture, speech input/output, and Quest behavior need hardware testing.
 
-Quest support means a responsive **browser panel**, not immersive WebXR. Passthrough visibility does not guarantee raw camera access. Upload and typed controls remain available. No tracking, reconstruction, checkout, or payments.
+Quest support includes a responsive headset browser mode and an optional immersive WebXR workspace using Three.js. The app checks immersive-vr support at runtime. Enter VR requires a user gesture. The immersive workspace mirrors the draft, photo, and assistant response; controller triggers or 1.8-second gaze dwell invoke camera, capture, voice, and save actions. Actual headset behavior still needs hardware testing. Passthrough visibility does not guarantee raw camera access. Upload and typed controls remain available. No tracking, reconstruction, checkout, or payments.
 
 Draft, normalized image, style, save identity, and verified save result persist in localStorage; secrets do not. Large photos are resized to 1400px, keeping the source artwork. Storage quota failures are shown. Local browser storage is not a backup.
 
@@ -57,3 +57,14 @@ Documentation used: [Gateway GPT-4.1](https://vercel.com/ai-gateway/models/gpt-4
 ## Camera access during local development
 
 After changing next.config.mjs, restart the dev server. The configured LAN hostname 192.168.11.3 can load Next.js dev resources, but plain HTTP on a LAN IP is not a secure context and cannot use getUserMedia. On the same computer, open http://localhost:3000 and allow the browser camera permission. On a phone or Quest, use an HTTPS deployment with a valid certificate (for example Vercel). Camera hardware access still depends on the device/browser. The app now shows secure-context, permission, missing-device, and busy-camera errors directly below the camera controls.
+
+
+## Headset workflow
+
+Open [vrify](https://vrify.vercel.app) in the headset browser. Choose Headset mode for larger controls, then Enable hands-free voice and allow the microphone. Say “vrify open camera”, “vrify capture photo”, “vrify call it Girls Love My Swag. Price is 45 dollars. Only one available”, and “vrify save to Shopify”. Use the provided demo photo when raw headset cameras are unavailable. On WebXR devices, Enter immersive VR opens a floating workspace with controller and gaze-dwell actions. A held gaze activates an action once; look away before activating it again.
+
+The first VR entry and microphone permission need a gesture. Quest browsers without browser speech recognition need a server-side AI_GATEWAY_API_KEY for recorded-audio transcription. Speech-containing WAV utterances (up to 12 seconds each) go through Gateway; recordings are not persisted. Silence detection uses a simple energy threshold and may need tuning in noisy environments. No hands-free claim is made for unsupported devices.
+
+## CI/CD
+
+GitHub Actions (.github/workflows/ci.yml) runs tests, a production build, and type checks on main pushes and pull requests using Node 24. Vercel Git integration deploys repository changes automatically. GitHub CI and Vercel builds run separately; CI is not a deployment gate unless repository/project policies are configured. Secrets belong in Vercel environment settings.
